@@ -14,7 +14,7 @@ To build this project, you need
 This project is composed of git submodules.
 To clone the project, use the following command:
 ```sh
-git clone --recusrive git@github.com:oschijns/n64brew-gamejam-2025.git
+git clone --recursive git@github.com:oschijns/n64brew-gamejam-2025.git
 ```
 
 If you did a regular `git clone`,
