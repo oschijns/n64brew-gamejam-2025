@@ -1,8 +1,8 @@
 #pragma once
 
 /**
- * @file bezier.hpp
- * @brief Define a Bezier curve utility class
+ * @file bezier_track.hpp
+ * @brief Store track data as a chain of Bezier curves
  * 
  * BezierTrack allows to define a track as a chain of cubic Bezier curve segments.
  * Each segment is defined by 4 control points, where the last point of each segment
@@ -42,15 +42,62 @@
 
 #include <math.h>
 #include "math/base.hpp"
+#include "math/interpolate.hpp"
 #include "math/vec3.hpp"
 #include "math/aabb.hpp"
 #include "collection.hpp"
 
 namespace jam
 {
+    template<unsigned N>
+    class SampledSubTrack;
+
     class BezierTrack;
 
-    /// @brief Define data specific to a Bezier curve segment point
+
+    /// @brief Point sampled from the track
+    struct Point
+    {
+        friend class BezierTrack;
+
+    public:
+        /// @brief Position of the point in 3D space
+        Vec3 position;
+
+        /// @brief Normal at the control point
+        Vec3 normal;
+
+        /// @brief Width at the control point
+        real width;
+
+        /// @brief Default constructor
+        inline Point(const Vec3 & pos, const Vec3 & normal_, real width_):
+            position(pos), normal(normal_), width(width_)
+        {}
+
+    protected:
+        /// @brief Default constructor
+        inline Point() {}
+
+    public:
+        /// @brief Linera interpolation between two points
+        /// @param pt0 First point
+        /// @param pt1 Second point
+        /// @param t   Interpolation weight
+        /// @return The interpolation of the two points
+        static inline Point lerp(const Point & pt0, const Point & pt1, real t)
+        {
+            return Point(
+                Vec3::lerp(pt0.position, pt1.position, t),
+                Vec3::normal_slerp(pt0.normal, pt1.normal, t),
+                jam::lerp(pt0.width, pt1.width, t)
+            );
+        }
+
+    };
+
+
+    /// @brief Extra data for a track segment (aka. cubic Bezier curve)
     struct SegmentData
     {
     public:
@@ -84,30 +131,7 @@ namespace jam
     };
 
 
-    /// @brief Define a point structure for Bezier curve points
-    struct Point
-    {
-        friend class BezierTrack;
-
-    public:
-        /// @brief Position of the point in 3D space
-        Vec3 position;
-
-        /// @brief Extra data associated with the point
-        SegmentData data;
-
-        /// @brief Default constructor
-        inline Point(const Vec3 & pos, const Vec3 & normal, real width):
-            position(pos), data(normal, width)
-        {}
-
-    protected:
-        /// @brief Default constructor
-        inline Point() {}
-    };
-
-
-    /// @brief Define a Bezier curve utility class
+    /// @brief Store track data as a chain of cubic Bezier curves
     class BezierTrack
     {
     protected:
@@ -136,10 +160,45 @@ namespace jam
         /// @brief Get the number of segments in the Bezier curve
         inline uint segment_count() const { return segments_data.len() - 1; }
 
-        /// @brief Get an interpolated point on the Bezier curve
-        /// @param segment Index of the segment to sample from
-        /// @param weight Weight along the segment in [0, 1]
-        /// @return Interpolated point at the specified segment and weight
-        Point get_point(uint segment, real weight) const;
+    protected:
+        /// @brief Presample a segment of the track so that positions lookup are faster
+        /// @param index   Index of the segment to sample from
+        /// @param samples Sampling storage to populate
+        /// @param len     Length of the sampling storage
+        void sample_segment(uint index, Point * samples, uint len) const;
+
+    public:
+        /// @brief Presample a segment of the track so that positions lookup are faster
+        /// @tparam N The number of samples to compute
+        /// @param[in]  index   Index of the segment to sample from
+        /// @param[out] samples Sampling storage to populate
+        template<unsigned N>
+        inline void sample_segment(uint index, SampledSubTrack<N> & samples) const
+        {
+            sample_segment(index, samples.points.data, N);
+        }
+    };
+
+
+    /// @brief Sampled data for a segment of the track
+    template<unsigned N>
+    class SampledSubTrack
+    {
+    protected:
+        /// @brief List of points sampled from the initial track
+        Array<Point, N> points;
+
+    public:
+
+        /// @brief Given a position in space, compute an interpolated point 
+        ///        obtain the normal and width of the track at that point.
+        /// @param position The position in 3D space
+        /// @param index    The index of the first vertex of the segment to check
+        /// @return Closest point on the track
+        /// @details Instead of looking for the closest segment, we assume that 
+        ///          as the car follows the track, it will encounter the segments 
+        ///          in sequence.
+        Point closest_point(const Vec3 & position, uint index) const;
+
     };
 }
