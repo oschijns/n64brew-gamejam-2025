@@ -4,11 +4,11 @@
  * @file bezier_track.hpp
  * @brief Store track data as a chain of Bezier curves
  * 
- * BezierTrack allows to define a track as a chain of cubic Bezier curve segments.
- * Each segment is defined by 4 control points, where the last point of each segment
- * is the first point of the next segment. The class allows to retrieve interpolated
+ * BezierTrack allows to define a track as a chain of cubic Bezier curve sections.
+ * Each section is defined by 4 control points, where the last point of each section
+ * is the first point of the next section. The class allows to retrieve interpolated
  * points along the curve, including extra data such as normals and widths associated
- * with each segment. 
+ * with each section. 
  * 
  * Assuming we have a circuit defined as this:
  * 
@@ -22,18 +22,18 @@
  *      \             /
  *       C1 -- C0 -- B2
  * 
- * Then we have 4 segments: A, B, C, D
- * Each segment has 4 control points:
+ * Then we have 4 sections: A, B, C, D
+ * Each section has 4 control points:
  * - Segment A: A0, A1, A2, B0
  * - Segment B: B0, B1, B2, C0
  * - Segment C: C0, C1, C2, D0
  * - Segment D: D0, D1, D2, A0
  * 
- * The last control point of segment D (A0) is a duplicate of the first control point
- * of segment A to allow proper looping.
+ * The last control point of section D (A0) is a duplicate of the first control point
+ * of section A to allow proper looping.
  * 
- * And for each segment, we have an associated segment data which define 
- * the normal and the width at the beginning of the segment.
+ * And for each section, we have an associated section data which define 
+ * the normal and the width at the beginning of the section.
  * 
  * references:
  * - https://en.wikipedia.org/wiki/B%C3%A9zier_curve
@@ -97,8 +97,8 @@ namespace jam
     };
 
 
-    /// @brief Extra data for a track segment (aka. cubic Bezier curve)
-    struct SegmentData
+    /// @brief Extra data for a track section (aka. cubic Bezier curve)
+    struct SectionData
     {
     public:
         /// @brief Normal at the control point
@@ -108,26 +108,26 @@ namespace jam
         real width;
 
     protected:
-        /// @brief AABB enclosing the segment 
+        /// @brief AABB enclosing the section 
         AABB aabb = AABB::invalid();
 
     public:
         /// @brief Default constructor
-        inline SegmentData(): normal(0.f, 1.f, 0.f), width(1.f)
+        inline SectionData(): normal(0.f, 1.f, 0.f), width(1.f)
         {}
 
         /// @brief Default constructor
-        inline SegmentData(const Vec3 & normal_, real width_):
+        inline SectionData(const Vec3 & normal_, real width_):
             normal(normal_), width(width_)
         {}
 
         /// @brief Move constructor
-        inline SegmentData(Vec3 && normal_, real width_):
+        inline SectionData(Vec3 && normal_, real width_):
             normal(normal_), width(width_)
         {}
 
         /// @brief Default destructor
-        inline ~SegmentData() = default;
+        inline ~SectionData() = default;
     };
 
 
@@ -137,50 +137,50 @@ namespace jam
     protected:
         /// @brief List of control points defining the Bezier curve
         /// The control points are stored in a flat list as a chain of cubic 
-        /// Bezier segments. The last point of each segment is the first point 
-        /// of the next segment. And the last control point is a duplicate of 
+        /// Bezier sections. The last point of each section is the first point 
+        /// of the next section. And the last control point is a duplicate of 
         /// the first to allow proper looping.
         List<Vec3> control_points;
 
-        /// @brief List of segment data associated with each control point
-        List<SegmentData> segments_data;
+        /// @brief List of section data associated with each control point
+        List<SectionData> sections_data;
 
 
     public:
-        /// @brief Create a Bezier curve by specifying the number of segments
-        /// @param segments_ Number of segments to allocate
-        inline BezierTrack(uint segments_):
-            control_points(segments_ * 3 + 1),
-            segments_data(segments_ + 1)
+        /// @brief Create a Bezier curve by specifying the number of sections
+        /// @param sections_ Number of sections to allocate
+        inline BezierTrack(uint sections_):
+            control_points(sections_ * 3 + 1),
+            sections_data(sections_ + 1)
         {}
 
         /// @brief Default destructor
         inline ~BezierTrack() = default;
 
-        /// @brief Get the number of segments in the Bezier curve
-        inline uint segment_count() const { return segments_data.len() - 1; }
+        /// @brief Get the number of sections in the Bezier curve
+        inline uint section_count() const { return sections_data.len() - 1; }
 
     protected:
-        /// @brief Presample a segment of the track so that positions lookup are faster
-        /// @param index   Index of the segment to sample from
+        /// @brief Presample a section of the track so that positions lookup are faster
+        /// @param index   Index of the section to sample from
         /// @param samples Sampling storage to populate
         /// @param len     Length of the sampling storage
-        void sample_segment(uint index, Point * samples, uint len) const;
+        void sample_section(uint index, Point * samples, uint len) const;
 
     public:
-        /// @brief Presample a segment of the track so that positions lookup are faster
+        /// @brief Presample a section of the track so that positions lookup are faster
         /// @tparam N The number of samples to compute
-        /// @param[in]  index   Index of the segment to sample from
+        /// @param[in]  index   Index of the section to sample from
         /// @param[out] samples Sampling storage to populate
         template<unsigned N>
-        inline void sample_segment(uint index, SampledSubTrack<N> & samples) const
+        inline void sample_section(uint index, SampledSubTrack<N> & samples) const
         {
-            sample_segment(index, samples.points.data, N);
+            sample_section(index, samples.points.data, N);
         }
     };
 
 
-    /// @brief Sampled data for a segment of the track
+    /// @brief Sampled data for a section of the track
     template<unsigned N>
     class SampledSubTrack
     {
@@ -193,10 +193,10 @@ namespace jam
         /// @brief Given a position in space, compute an interpolated point 
         ///        obtain the normal and width of the track at that point.
         /// @param position The position in 3D space
-        /// @param index    The index of the first vertex of the segment to check
+        /// @param index    The index of the first vertex of the section to check
         /// @return Closest point on the track
-        /// @details Instead of looking for the closest segment, we assume that 
-        ///          as the car follows the track, it will encounter the segments 
+        /// @details Instead of looking for the closest section, we assume that 
+        ///          as the car follows the track, it will encounter the sections 
         ///          in sequence.
         Point closest_point(const Vec3 & position, uint index) const;
 

@@ -4,7 +4,7 @@
 using namespace jam;
 
 
-void BezierTrack::sample_segment(uint index, Point * samples, uint len) const
+void BezierTrack::sample_section(uint index, Point * samples, uint len) const
 {
     // Figure out where to read control points from
     const uint   idx = index * 3;
@@ -30,10 +30,10 @@ void BezierTrack::sample_segment(uint index, Point * samples, uint len) const
             & p2 = ptr[idx + 2],
             & p3 = ptr[idx + 3];
 
-        // Fetch segment data
-        const SegmentData
-            & s0 = segments_data[index    ],
-            & s1 = segments_data[index + 1];
+        // Fetch section data
+        const SectionData
+            & s0 = sections_data[index    ],
+            & s1 = sections_data[index + 1];
 
         // Compute the interpolated point
         // We reimplement the bezier_cubic here to avoid extra copies
@@ -57,20 +57,20 @@ void BezierTrack::sample_segment(uint index, Point * samples, uint len) const
 template<unsigned N>
 Point SampledSubTrack<N>::closest_point(const Vec3 & position, uint index) const
 {
-    // using the index, pick two consecutive points to form as segment
+    // using the index, pick two consecutive points to form as section
     const Point 
         & pt0 = points[index    ], 
         & pt1 = points[index + 1];
 
-    // Direction from the first point of the segment to the next one
+    // Direction from the first point of the section to the next one
     const Vec3 dir = pt1.position - pt0.position;
 
-    // Get a projection scalar of the position onto the segment pt0 -> pt1
+    // Get a projection scalar of the position onto the section pt0 -> pt1
     real t = (position - pt0.position).dot(dir) / dir.mag_sqr();
 
     // if that projection is 
-    // - lower than zero, we have moved to the previous segment
-    // - higher than one, we have moved to the next segment
+    // - lower than zero, we have moved to the previous section
+    // - higher than one, we have moved to the next section
     
     // TODO
 
