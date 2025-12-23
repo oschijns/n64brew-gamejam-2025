@@ -103,9 +103,13 @@ env = SCons.Environment.Environment(
 
         # libdragon
         f'-L{N64_INST}/mips64-elf/lib',
+        '-LLlibraries/libdragon',
 
-        # Precompiled libraries libdragon, Tiny3D, Flecs
-        '-Llibraries/precompiled',
+        # Tiny3D
+        '-Llibraries/tiny3d/build',
+
+        # Flecs ECS
+        '-Llibraries/flecs',
 
         # Use the libdragon N64 linker script and wrap global ctor handling.
         f'-Wl,-T,{N64_INST}/mips64-elf/lib/n64.ld',
@@ -126,12 +130,37 @@ env = SCons.Environment.Environment(
 jobs: int = GetOption('num_jobs') or 1
 
 # define path to library builds
-lib_precompiled = [
-    'libraries/precompiled/libdragon.a', 
-    'libraries/precompiled/libdragonsys.a',
-    'libraries/precompiled/libt3d.a',
-    'libraries/precompiled/libflecs_static.a',
+lib_libdragon = [
+    'libraries/libdragon/libdragon.a', 
+    'libraries/libdragon/libdragonsys.a',
 ]
+lib_tiny3d = [
+    'libraries/tiny3d/build/libt3d.a'
+]
+lib_flecs = [
+    'libraries/flecs/libflecs_static.a'
+]
+
+# Define rules to build libraries
+env.Command(
+    target = lib_libdragon, 
+    source = [],
+    action = Action(chdir = 'libraries/libdragon', act = f'make -j{jobs} all')
+)
+env.Command(
+    target = lib_tiny3d, 
+    source = [],
+    action = Action(chdir = 'libraries/tiny3d', act = f'make -j{jobs} all')
+)
+env.Command(
+    target = lib_flecs, 
+    source = [], 
+    action = [
+        Action(chdir = 'libraries/flecs', act = f'cmake -DN64_INST={N64_INST} -DCMAKE_TOOLCHAIN_FILE=../n64_flecs.cmake .'),
+        Action(chdir = 'libraries/flecs', act = f'make -j{jobs} flecs_static')
+    ]
+)
+
 
 # Build directory
 env.VariantDir('build', 'src', duplicate=0)
@@ -139,6 +168,10 @@ env.VariantDir('build', 'src', duplicate=0)
 build_sources = []
 for src in source_files:
     build_sources.extend(env.Glob(src))
+
+
+# Create build directory objects
+#build_sources = [f'{build_dir}/{os.path.basename(src)}' for src in source_files]
 
 # Build the ELF executable
 elf_target = 'build/Build.elf'
@@ -200,7 +233,7 @@ rom_target = 'n64brew_gamejam.z64'
 rom = env.N64ROM(target=rom_target, source=elf)
 
 # Set up dependencies
-env.Depends(elf, lib_precompiled)
+env.Depends(elf, lib_libdragon + lib_tiny3d + lib_flecs)
 env.Depends(rom, elf)
 
 # Default target
