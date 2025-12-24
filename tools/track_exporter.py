@@ -3,113 +3,113 @@
 import os.path
 import sys
 import bpy
+import json
 import struct
-import numpy as np
 import itertools
 
+from pathlib   import Path
 from typing    import Self, Any
-from bpy.types import Vector, Point, Spline, BezierSplinePoint
+from mathutils import Vector, Quaternion
+from bpy.types import Point, Spline, BezierSplinePoint
 
 
-# Define a 3D vector
-class Vec3:
+# object to look for in the blender project
+# and where to write it as a binary file
+TRACK_NAME : str  = "TRACK"
+OUTPUT_PATH: Path = Path("/home/oschijns/Projects/n64")
+AUDIT_FILE : str  = "track.json"
+BINARY_FILE: str  = "track.bin"
 
-    # Create a vector from raw data
-    def __init__(self, coords: Any):
-        self.coords = np.array(coords)
 
-    # Create a vector3 from a Blender vector type
-    @staticmethod
-    def from_blender(vec: Vector) -> Self:
-        return Self(vec.xzy)
+# iterate list by overlapping pairs
+def pairwise(iterable):
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
-    # +
-    def __add__(self, other: Self) -> Self:
-        return Self(self.coords + other.coords)
+# reorder 3D vector components from Blender's coordinate system to libdragon's one
+def reorder_coords(vec: Vector) -> Vector:
+    return vec.xzy
 
-    # -
-    def __sub__(self, other: Self) -> Self:
-        return Self(self.coords - other.coords)
+# serialize the data as a sequence of bytes
+def serialize_point(vec: Vector) -> bytes:
+    return struct.pack(">fff", *vec)
 
-    # *
-    def __mul__(self, other: float) -> Self:
-        return Self(self.coords * other)
+# serialize the data as a sequence of bytes
+def serialize_normal(vec: Vector) -> bytes:
+    norm: Vector = vec * 127.0
+    return struct.pack('>bbb', int(norm.x), int(norm.y), int(norm.z))
 
-    # /
-    def __truediv__(self, other: float) -> Self:
-        return Self(self.coords / other)
-
-    # serialize the data as a sequence of bytes
-    def serialize(self) -> bytes:
-        return struct.pack(">fff", *self.coords)
-
-    # serialize the data as a sequence of bytes
-    def serialize_normal(self) -> bytes:
-        coords = np.array(self.coords * 127.0, dtype=np.int8)
-        return struct.pack('>bbb', *coords)
-
-    # Normalize the vector
-    def normalize(self) -> Self:
-        self.coords = self.coords / np.linalg.norm(self.coords)
-        return self
-
-    # Rotate the vector around the provided axis
-    def rotate_around(self, rot_axis: Self, angle: float) -> Self:
-        vec   = self.coords
-        axis  = rot_axis.coords
-        sin   = np.sin(angle)
-        cos   = np.cos(angle)
-        dot   = np.dot  (axis, vec)
-        cross = np.cross(axis, vec)
-
-        return Self(
-            vec   * cos + 
-            cross * sin + 
-            axis  * dot * (1.0 - cos)
-        )
-
+# convert to json
+def vector_to_json(vec: Vector) -> dict[str, float]:
+    return {
+        'x': vec.x,
+        'y': vec.y,
+        'z': vec.z,
+    }
 
 
 # Define curve data such as normal and width
 class SectionData:
 
     # create a section from raw data
-    def __init__(self, normal: Any, width: float):
-        self.normal = Vec3(normal)
-        self.width  = width
+    def __init__(self, normal: Vector, width: float):
+        self.normal: Vector = normal
+        self.width : float  = width
+
 
     # Create a section data from a Blender BezierSplinePoint type
-    @staticmethod
-    def from_blender(pt: BezierSplinePoint) -> Self:
-        up   = Vec3(0.0, 1.0, 0.0)
-        pt0  = Vec3.from_blender(pt.co          )
-        pt1  = Vec3.from_blender(pt.handle_right)
-        axis = (pt1 - pt0).normalize()
+    @classmethod
+    def from_blender(clazz: type[Self], pt: BezierSplinePoint) -> Self:
+        up  : Vector     = Vector((0.0, 1.0, 0.0))
+        pt0 : Vector     = reorder_coords(pt.co          )
+        pt1 : Vector     = reorder_coords(pt.handle_right)
+        axis: Vector     = (pt1 - pt0).normalized()
+        quat: Quaternion = Quaternion(axis, pt.tilt)
+        up.rotate(quat)
+        return clazz(up, pt.radius)
 
-        return Self(up.rotate_around(axis, pt.tilt), pt.radius)
 
     # serialize the data as a sequence of bytes
     def serialize(self) -> bytes:
-        return self.normal.serialize_normal() + struct.pack(">f", self.width)
+        return serialize_normal(self.normal) + struct.pack(">f", self.width)
 
+
+    # convert to json
+    def to_json(self) -> dict[str, Any]:
+        return {
+            'normal': vector_to_json(self.normal),
+            'width' : self.width,
+        }
 
 
 # Track read from the Blender curve and to be serialized
 class Track:
 
     # Constructor for a track
-    def __init__(self, spline: Spline):
+    def __init__(self, points: list[Vector], sections: list[SectionData]):
         # Storage for the data to read
-        self.points  : list[Vec3       ] = []
-        self.sections: list[SectionData] = []
+        self.points  : list[Vector     ] = points
+        self.sections: list[SectionData] = sections
+
+
+    # Create a track object from a Blender Spline
+    @classmethod
+    def from_blender(clazz: type[Self], spline: Spline) -> Self:
+        # Storage for the data to read
+        points  : list[Vector     ] = []
+        sections: list[SectionData] = []
 
         # iterate over every bezier points two by two
         for pt0, pt1 in pairwise(spline.bezier_points):
             # get the three control points
-            self.points  .append(Vec3.from_blender(pt0.co          ))
-            self.points  .append(Vec3.from_blender(pt0.handle_right))
-            self.points  .append(Vec3.from_blender(pt1.handle_left ))
-            self.sections.append(SectionData.from_blender(pt0))
+            points  .append(reorder_coords(pt0.co          ))
+            points  .append(reorder_coords(pt0.handle_right))
+            points  .append(reorder_coords(pt1.handle_left ))
+            sections.append(SectionData.from_blender(pt0))
+
+        return clazz(points, sections)
+
 
     # serialize the data as a sequence of bytes
     def serialize(self) -> bytes:
@@ -123,74 +123,50 @@ class Track:
         serial += struct.pack(">H", len(self.sections))
 
         # Encode the control points then encode the section data
-        for point   in self.points  : serial += point  .serialize()
-        for section in self.sections: serial += section.serialize()
+        for point in self.points:
+            serial += serialize_point(point)
+        for section in self.sections:
+            serial += section.serialize()
 
         # Return the generated file
         return serial
 
 
+    # convert to json
+    def to_json(self) -> dict[str, list]:
+        return {
+            'points'  : [vector_to_json(p) for p in self.points  ],
+            'sections': [s.to_json()       for s in self.sections],
+        }
 
-# iterate list by overlapping pairs
-def pairwise(iterable):
-    a, b = itertools.tee(iterable)
-    next(b, None)
-    return zip(a, b)
+
+    # write the serialization of this track to a file
+    def write_to_file(self, file_path: Path):
+        header: bytes = struct.pack('>BB', 1, 3)
+        serial: bytes = self.serialize()
+        with open(file_path, 'wb+') as file:
+            file.write(header)
+            file.write(serial)
 
 
 
-"""
+# Read a bezier curve in the Blender scene and write it to a file
+def main():
+    blend_obj = bpy.context.scene.objects[TRACK_NAME]
+    track: Track = Track.from_blender(blend_obj.data.splines[0])
 
-DATA = bpy.data
-track = DATA.collections[1].objects[0]
+    # where to write the files
+    path_bin : Path = OUTPUT_PATH / BINARY_FILE
+    path_json: Path = OUTPUT_PATH / AUDIT_FILE
 
-# first, get our curve co's and handles
-curve_points = []
-content = "\n"
-for i, spline in enumerate(track.data.splines):
-    for j, point in enumerate(spline.bezier_points):
-        curve_points += [b
-                         for x in (point.co, point.handle_left, point.handle_right)
-                         for b in struct.pack(">fff", *list((track.matrix_world @ x).xzy))]
+    # write a JSON representation of the file to audit it
+    with open(path_json, 'w+') as file:
+        file.write(json.dumps(track.to_json(), indent=4))
 
-# second, get our normals. This requires us to create a mesh
-depsgraph = bpy.context.evaluated_depsgraph_get()
+    # write the actual binary file
+    track.write_to_file(path_bin)
 
-# materialize the mesh
-track_mesh = DATA.meshes.new_from_object(track, depsgraph=depsgraph)
-track_mesh_obj = DATA.objects.new("Convert", track_mesh)
-assert len(
-    track_mesh_obj.data.vertex_normals) > 1, "Failed to generate normals for curve"
 
-normals = []
-for norm in track_mesh_obj.data.vertex_normals:
-    normals += struct.pack(">fff", *
-                           list((track.matrix_world @ norm.vector).xzy))
 
-DATA.objects.remove(track_mesh_obj)
-
-# todo: Take this as a cli param
-base_path = r'\\wsl.localhost\Ubuntu\home\ischweer\dev\n64dev'
-if len(sys.argv) > 1:
-    print(sys.argv[-1])
-    base_path = sys.argv[-1]
-
-base_path = os.path.join(base_path, "track_layout.bin")
-
-with open(base_path, "wb") as fh:
-    fh.write((1).to_bytes(1, byteorder='little'))  # version header
-    # number of points per object
-    fh.write((3).to_bytes(1, byteorder='little'))
-    # number of floats upcoming
-    print(f"{len(curve_points)} bytes written for control points")
-    print("First 6 points : ", struct.unpack(
-        ">"+"f"*6, bytes(curve_points[0:24])))
-    fh.write((len(curve_points) // 4).to_bytes(2, byteorder='little'))
-    fh.write(bytes(curve_points))
-    print(f"{len(normals)} bytes written for normals points")
-    print("First 6 normals: ", struct.unpack(">"+"f"*6, bytes(normals[0:24])))
-    fh.write((len(normals) // 4).to_bytes(4, byteorder='little'))
-    fh.write(bytes(normals))
-    print("Bytes written: ", fh.tell())
-
-"""
+if __name__ == "__main__":
+    main()
