@@ -1,6 +1,9 @@
 #pragma once
 
+
+#include <cstdint>
 #include "math/base.hpp"
+
 
 namespace jam
 {
@@ -274,6 +277,18 @@ namespace jam
                 (a.x * s0 + b.x * s1) * s,
                 (a.y * s0 + b.y * s1) * s
             );
+        }
+
+
+        // MARK: Conversion
+
+        /// @brief Convert the Vector into a RSPQ vector
+        /// @param scale Factor to multiply the vector with
+        /// @param[out] out  The RSPQ vector to write to
+        inline void to_rspq(real scale, int16_t (&out) [2]) const
+        {
+            out[0] = (int16_t) (x * scale);
+            out[1] = (int16_t) (y * scale);
         }
     };
 }

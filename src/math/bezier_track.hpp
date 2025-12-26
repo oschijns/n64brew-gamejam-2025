@@ -1,5 +1,7 @@
 #pragma once
 
+#if false
+
 /**
  * @file bezier_track.hpp
  * @brief Store track data as a chain of Bezier curves
@@ -41,6 +43,7 @@
  */
 
 #include <math.h>
+#include <rspq.h>
 #include "math/base.hpp"
 #include "math/interpolate.hpp"
 #include "math/vec3.hpp"
@@ -68,7 +71,7 @@ namespace jam
         Vec3 normal;
 
         /// @brief Width at the control point
-        real width;
+        real width = 1.f;
 
         /// @brief Default constructor
         inline Point(const Vec3 & pos, const Vec3 & normal_, real width_):
@@ -88,9 +91,9 @@ namespace jam
         static inline Point lerp(const Point & pt0, const Point & pt1, real t)
         {
             return Point(
-                Vec3::lerp(pt0.position, pt1.position, t),
-                Vec3::normal_slerp(pt0.normal, pt1.normal, t),
-                jam::lerp(pt0.width, pt1.width, t)
+                Vec3::lerp        (pt0.position, pt1.position, t),
+                Vec3::normal_slerp(pt0.normal  , pt1.normal  , t),
+                jam ::lerp        (pt0.width   , pt1.width   , t)
             );
         }
 
@@ -105,7 +108,7 @@ namespace jam
         Vec3 normal;
 
         /// @brief Width at the control point
-        real width;
+        real width = 1.f;
 
     protected:
         /// @brief AABB enclosing the section 
@@ -177,7 +180,7 @@ namespace jam
         /// @param sections_ Number of sections to allocate
         inline explicit BezierTrack(uint sections_):
             control_points(sections_ * 3 + 1),
-            sections_data(sections_ + 1)
+             sections_data(sections_     + 1)
         {}
 
     protected:
@@ -228,7 +231,7 @@ namespace jam
         /// @param index   Index of the section to sample from
         /// @param samples Sampling storage to populate
         /// @param len     Length of the sampling storage
-        void sample_section(uint index, Point * samples, uint len) const;
+        void sample_section(uint index, Point samples [], uint len) const;
 
     public:
         /// @brief Presample a section of the track so that positions lookup are faster
@@ -247,9 +250,47 @@ namespace jam
     template<unsigned N>
     class SampledSubTrack
     {
+        friend class BezierTrack;
+
     protected:
         /// @brief List of points sampled from the initial track
         Array<Point, N> points;
+
+        /// @brief RSPQ commands to render the sub-track
+        rspq_block_t * cmd_block = nullptr;
+
+    public:
+
+        /// @brief Destructor for the sub track
+        ~SampledSubTrack();
+
+        /// @brief Generate RSPQ command block for this sub-track
+        void build_render_commands();
+
+        /// @brief Given a position in space, compute an interpolated point 
+        ///        obtain the normal and width of the track at that point.
+        /// @param[in]  position The position in 3D space
+        /// @param[in]  index    The index of the first vertex of the segment to check
+        /// @param[out] point    The point object to populate with the closest point on the track
+        /// @return New index to use for the next lookup, or which previous or next sampled sub-track to look
+        /// @retval      -1  If we should look in previous sub-track (car goes in reverse)
+        /// @retval     N-1  If we should look in next sub-track
+        /// @retval [0, N-2] Index to use for next lookup.
+        /// @details Instead of looking for the closest segment, we assume that as the 
+        ///          car follows the track, it will encounter the segments in sequence.
+        int closest_point(const Vec3 & position, int index, Point & point) const;
+
+    };
+
+
+    /// @brief Sampled data for a section of the track
+    template<unsigned C, unsigned N>
+    class SampledContainer
+    {
+    protected:
+        /// @brief Define a sequence of sampled sub-track
+        /// @details They are stored as pointer so that it is quick to reorder them
+        Array<SampledSubTrack<N> *, C> containers;
 
     public:
 
@@ -259,8 +300,8 @@ namespace jam
         /// @param[in]  index    The index of the first vertex of the segment to check
         /// @param[out] point    The point object to populate with the closest point on the track
         /// @return New index to use for the next lookup, or which previous or next sampled sub-track to look
-        /// @retval   -1 if we should look in previous sub-track (car goes in reverse)
-        /// @retval  N-1 if we should look in next sub-track
+        /// @retval      -1  If we should look in previous sub-track (car goes in reverse)
+        /// @retval     N-1  If we should look in next sub-track
         /// @retval [0, N-2] Index to use for next lookup.
         /// @details Instead of looking for the closest segment, we assume that as the 
         ///          car follows the track, it will encounter the segments in sequence.
@@ -268,3 +309,5 @@ namespace jam
 
     };
 }
+
+#endif

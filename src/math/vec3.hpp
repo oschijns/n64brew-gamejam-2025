@@ -1,6 +1,9 @@
 #pragma once
 
+
+#include <cstdint>
 #include "math/base.hpp"
+
 
 namespace jam
 {
@@ -290,6 +293,45 @@ namespace jam
                 (a.y * s0 + b.y * s1) * s,
                 (a.z * s0 + b.z * s1) * s
             );
+        }
+
+
+        // MARK: Conversion
+
+        /// @brief Convert the Vector into a RSPQ vector
+        /// @param[in] scale Factor to multiply the vector with
+        /// @param[out] out  The RSPQ vector to write to
+        inline void to_rspq(real scale, int16_t (&out) [3]) const
+        {
+            out[0] = (int16_t) (x * scale);
+            out[1] = (int16_t) (y * scale);
+            out[2] = (int16_t) (z * scale);
+        }
+
+        /// @brief Compose a RSPQ normal
+        /// @return a 16-bits word containing a normal encoded for the RSPQ
+        uint16_t to_rspq_normal() const
+        {
+            // normals are stored as 5,6,5
+            // assuming that one bit is reserved for the sign of each component
+            // we have S_XZ = 2^4 - 1 = 15 and S_Y = 2^5 - 1 = 31
+            // TODO is it x,y,z or z,y,x ?
+            constexpr real S_XZ = 15.f   , S_Y = 31.f    ;
+            constexpr uint M_XZ = 0b11111, M_Y = 0b111111;
+
+            // convert the normal into a integer
+            const uint 
+                ix = (int)(x * S_XZ),
+                iy = (int)(y * S_Y ),
+                iz = (int)(z * S_XZ);
+
+            // combine the three components into a single 16-bits word
+            const uint aggreg = 
+                ((ix & M_XZ) << 11) |
+                ((iy & M_Y ) <<  5) |
+                ((iz & M_XZ));
+
+            return (uint16_t) aggreg;
         }
     };
 }

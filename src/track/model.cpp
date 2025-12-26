@@ -1,31 +1,31 @@
-#if false
-
-#include "math/bezier_track.hpp"
-#include "math/interpolate.hpp"
 #include <libdragon.h>
+#include "math/interpolate.hpp"
+#include "track/model.hpp"
+
 
 /// @brief Specify the file version expected
 constexpr uint FILE_VERSION = 1;
 
 
 using namespace jam;
+using namespace jam::track;
 
 
-void BezierTrack::sample_section(uint index, Point samples[], uint len) const
+void Model::sample_section(uint index, List<Point> & samples) const
 {
     // Figure out where to read control points from
     const uint   idx = index * 3;
     const Vec3 * ptr = control_points.raw();
 
     // iterate over the path at fixed weight intervals
-    const real factor = 1.f / (real) (len - 1);
-    for (uint i = 0; i < len; ++i)
+    const real factor = 1.f / (real) (samples.len() - 1);
+    for (uint i = 0; i < samples.len(); ++i)
     {
         // precompute powers
         const real 
             t  = (real) i * factor,
-            v  = 1.f - t, 
-            t2 = t   * t, 
+            v  = 1.f - t,
+            t2 = t   * t,
             t3 = t2  * t,
             v2 = v   * v,
             v3 = v2  * v;
@@ -61,7 +61,7 @@ void BezierTrack::sample_section(uint index, Point samples[], uint len) const
 }
 
 /// @brief Header layout for the Track file
-struct BinaryHeader
+struct FileHeader
 {
     /// @brief Which version of the file are we reading
     uint8_t version;
@@ -74,7 +74,7 @@ struct BinaryHeader
 };
 
 
-TrackLoadError BezierTrack::load_from_file(const char * filepath, BezierTrack & track)
+LoadError Model::load_from_file(const char * filepath, Model & track)
 {
     /*
         Data layout:
@@ -90,25 +90,25 @@ TrackLoadError BezierTrack::load_from_file(const char * filepath, BezierTrack & 
 
     // Size of the components to read
     constexpr int
-        SIZE_HEADER  = sizeof(BinaryHeader),
-        SIZE_POINT   = sizeof(Vec3        ),
-        SIZE_SECTION = sizeof(SectionData );
+        SIZE_HEADER  = sizeof(FileHeader),
+        SIZE_POINT   = sizeof(Vec3),
+        SIZE_SECTION = sizeof(SectionData);
 
     // Open a file to load
     int size = 0;
     FILE * file = asset_fopen(filepath, &size);
-    if (file == NULL) return TrackLoadError::COULD_NOT_OPEN;
+    if (file == NULL) return LoadError::COULD_NOT_OPEN;
 
     // We need at the very least to read the header of the file
-    if (size < SIZE_HEADER) return TrackLoadError::EMPTY_FILE;
+    if (size < SIZE_HEADER) return LoadError::EMPTY_FILE;
 
     // Read the header
-    BinaryHeader header;
+    FileHeader header;
     fread(&header, SIZE_HEADER, 1, file);
 
     // check the data in the header
-    if (header.version == FILE_VERSION) return TrackLoadError::WRONG_VERSION;
-    if (header.count   == 0           ) return TrackLoadError::NO_DATA;
+    if (header.version == FILE_VERSION) return LoadError::WRONG_VERSION;
+    if (header.count   == 0           ) return LoadError::NO_DATA;
 
     // number of elements to read
     const int
@@ -120,7 +120,7 @@ TrackLoadError BezierTrack::load_from_file(const char * filepath, BezierTrack & 
         + count_points   * SIZE_POINT 
         + count_sections * SIZE_SECTION
     )
-        return TrackLoadError::WRONG_SECTION_COUNT;
+        return LoadError::WRONG_SECTION_COUNT;
 
     // Prepare the lists
     track.set_section_count(header.count);
@@ -133,74 +133,5 @@ TrackLoadError BezierTrack::load_from_file(const char * filepath, BezierTrack & 
     fread((void *) track.sections_data.raw_mut(), SIZE_SECTION, count_sections, file);
     track.sections_data[count_sections] = track.sections_data[0];
 
-    return TrackLoadError::OK;
+    return LoadError::OK;
 }
-
-
-template<unsigned N>
-void SampledSubTrack<N>::build_render_commands()
-{
-    // To draw the track, we need vertices on each edge of the road. 
-    // Because we have N sampled points, and a T3DVertPacked contains two points,
-    // we can simply declare a array of N T3DVertPacked.
-    static T3DVertPacked vertices [N];
-
-    rspq_block_begin();
-    // positions are set as signed 16-bits integer
-    // we should pick a base scale factor to properly convert a f32 into a s16
-//typedef struct {
-//  /* 0x00 */ int16_t posA[3]; // s16 (used in the ucode as the int. part of a s16.0)
-//  /* 0x06 */ uint16_t normA;  // 5,6,5 packed normal
-//  /* 0x08 */ int16_t posB[3]; // s16 (used in the ucode as the int. part of a s16.0)
-//  /* 0x0E */ uint16_t normB;  // 5,6,5 packed normal
-//  /* 0x10 */ uint32_t rgbaA; // RGBA8 color
-//  /* 0x14 */ uint32_t rgbaB; // RGBA8 color
-//  /* 0x18 */ int16_t stA[2]; // UV fixed point 10.5 (pixel coords)
-//  /* 0x1C */ int16_t stB[2]; // UV fixed point 10.5 (pixel coords)
-//} __attribute__((aligned(8))) T3DVertPacked;
-    //void t3d_vert_load(const T3DVertPacked *vertices, uint32_t offset, uint32_t count)
-    //void t3d_tri_draw_strip(int16_t *indexBuff, int count)
-
-    cmd_block = rspq_block_end();
-}
-
-template<unsigned N>
-SampledSubTrack<N>::~SampledSubTrack()
-{
-    rspq_wait();
-    rspq_block_free(cmd_block);
-}
-
-
-template<unsigned N>
-int SampledSubTrack<N>::closest_point(const Vec3 & position, int index, Point & point) const
-{
-    // as long as we are within the sub-track, look for a segment
-    while (-1 < index and index < N - 1)
-    {
-        // using the index, pick two consecutive points to form as segment
-        const Point 
-            & pt0 = points[index    ], 
-            & pt1 = points[index + 1];
-
-        // Direction from the first point of the segment to the next one
-        const Vec3 dir = pt1.position - pt0.position;
-
-        // Get a projection scalar of the position onto the segment pt0 -> pt1
-        real t = (position - pt0.position).dot(dir) / dir.mag_sqr();
-
-        // if that projection is 
-        // - lower than zero, we have moved to the previous segment
-        // - higher than one, we have moved to the next segment
-        if      (t < 0.0) --index;
-        else if (t > 1.0) ++index;
-        else
-        {
-            point = Point::lerp(pt0, pt1, t);
-            return index;
-        }
-    }
-    return index;
-}
-
-#endif
