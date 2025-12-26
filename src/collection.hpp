@@ -30,18 +30,49 @@ namespace jam
     {
     protected:
         /// @brief Current size of the list
-        unsigned size;
+        unsigned size = 0;
 
         /// @brief Pointer to the list data
-        T * data;
+        T * data = nullptr;
 
     public:
 
+        /// Create a default empty list with a size of zero
+        inline List() = default;
+
         /// @brief Create a list with specified size
-        inline List(unsigned size_): size(size_), data(new T [size_]) {}
+        inline explicit List(unsigned size_): size(size_), data(new T [size_]) {}
 
         /// @brief Default destructor
-        inline ~List() { delete[] data; }
+        inline ~List()
+        {
+            if (data)
+                delete[] data;
+        }
+
+        /// @brief Copy constructor
+        List(const List & list) = delete;
+
+        /// @brief Copy operator
+        List & operator=(const List & list) = delete;
+
+        /// @brief Move constructor
+        /// @param list List to move
+        inline List(List && list): size(list.size), data(list.data)
+        {
+            list.data = nullptr;
+        }
+
+        /// @brief Move operator
+        /// @param list List to move
+        /// @return this
+        List & operator=(List && list)
+        {
+            size = list.size;
+            data = list.data;
+            list.data = nullptr;
+            return *this;
+        }
 
         /// @brief Access operator
         inline T & operator[](unsigned index) { return data[index]; }
@@ -73,7 +104,7 @@ namespace jam
 
     public:
         /// @brief Create a list with specified size
-        inline Vec(unsigned capacity): list(capacity) {}
+        inline explicit Vec(unsigned capacity): list(capacity) {}
 
         /// @brief Default destructor
         inline ~Vec() = default;

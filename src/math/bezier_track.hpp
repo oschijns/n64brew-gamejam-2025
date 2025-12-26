@@ -131,6 +131,29 @@ namespace jam
     };
 
 
+    /// @brief Enumeration of possible errors that can be encountered when loading a track file
+    enum class TrackLoadError
+    {
+        /// @brief No error encountered when loading the file
+        OK = 0,
+
+        /// @brief Could not open provided file
+        COULD_NOT_OPEN,
+
+        /// @brief File is empty (or almost empty)
+        EMPTY_FILE,
+
+        /// @brief Binary file use a different version than the one expected
+        WRONG_VERSION,
+
+        /// @brief No track data to read (only header)
+        NO_DATA,
+
+        /// @brief We got a section count that do not match with the size of the file
+        WRONG_SECTION_COUNT,
+    };
+
+
     /// @brief Store track data as a chain of cubic Bezier curves
     class BezierTrack
     {
@@ -147,18 +170,58 @@ namespace jam
 
 
     public:
+        /// @brief Create an empty Bezier curve to populate
+        inline BezierTrack() = default;
+
         /// @brief Create a Bezier curve by specifying the number of sections
         /// @param sections_ Number of sections to allocate
-        inline BezierTrack(uint sections_):
+        inline explicit BezierTrack(uint sections_):
             control_points(sections_ * 3 + 1),
             sections_data(sections_ + 1)
         {}
+
+    protected:
+        /// @brief Set the list to be a given size
+        /// @param sections_ Number of sections to allocate
+        inline void set_section_count(uint sections_)
+        {
+            control_points = List<Vec3>       (sections_ * 3 + 1);
+            sections_data  = List<SectionData>(sections_     + 1);
+        }
+
+
+    public:
+        /// @brief Copy constructor
+        BezierTrack(const BezierTrack & track) = delete;
+
+        /// @brief Copy operator
+        BezierTrack & operator=(const BezierTrack & track) = delete;
+
+        /// @brief Move constructor
+        inline BezierTrack(BezierTrack && track):
+            control_points(std::move(track.control_points)),
+            sections_data (std::move(track.sections_data ))
+        {}
+
+        /// @brief Move operator
+        inline BezierTrack & operator=(BezierTrack && track)
+        {
+            control_points = std::move(track.control_points);
+            sections_data  = std::move(track.sections_data );
+            return *this;
+        }
 
         /// @brief Default destructor
         inline ~BezierTrack() = default;
 
         /// @brief Get the number of sections in the Bezier curve
         inline uint section_count() const { return sections_data.len() - 1; }
+
+        /// @brief Load a bezier track from a binary file
+        /// @param[in]  filepath Path to the file to load
+        /// @param[out] track    The track to build from the file
+        /// @return The type of error encountered when loading the file
+        static TrackLoadError load_from_file(const char * filepath, BezierTrack & track);
 
     protected:
         /// @brief Presample a section of the track so that positions lookup are faster
@@ -192,13 +255,16 @@ namespace jam
 
         /// @brief Given a position in space, compute an interpolated point 
         ///        obtain the normal and width of the track at that point.
-        /// @param position The position in 3D space
-        /// @param index    The index of the first vertex of the section to check
-        /// @return Closest point on the track
-        /// @details Instead of looking for the closest section, we assume that 
-        ///          as the car follows the track, it will encounter the sections 
-        ///          in sequence.
-        Point closest_point(const Vec3 & position, uint index) const;
+        /// @param[in]  position The position in 3D space
+        /// @param[in]  index    The index of the first vertex of the segment to check
+        /// @param[out] point    The point object to populate with the closest point on the track
+        /// @return New index to use for the next lookup, or which previous or next sampled sub-track to look
+        /// @retval   -1 if we should look in previous sub-track (car goes in reverse)
+        /// @retval  N-1 if we should look in next sub-track
+        /// @retval [0, N-2] Index to use for next lookup.
+        /// @details Instead of looking for the closest segment, we assume that as the 
+        ///          car follows the track, it will encounter the segments in sequence.
+        int closest_point(const Vec3 & position, int index, Point & point) const;
 
     };
 }

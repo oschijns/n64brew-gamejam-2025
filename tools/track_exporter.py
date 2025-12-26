@@ -12,12 +12,43 @@ from bpy.types import Operator, Panel, Spline, BezierSplinePoint
 from bpy.props import StringProperty
 
 
-# object to look for in the blender project
-# and where to write it as a binary file
-TRACK_NAME : str  = "TRACK"
-OUTPUT_PATH: Path = Path("/home/oschijns/Projects/n64")
-AUDIT_FILE : str  = "track.json"
-BINARY_FILE: str  = "track.bin"
+"""
+    # N64 Brew track exporter for Blender
+
+    This script will read data from a Blender's Curve Object identified by it's 
+    name and convert into a binary file to be loaded through LibDragon's filesystem. 
+    This script also generate an auditting JSON file which allows you to check 
+    if the data was serialized in the right direction and contains all the elements 
+    expected.
+
+    The binary format is the following with all values stored in big endian:
+
+    | Size            | Element                | Description |
+    |----------------:|------------------------|-------------|
+    |               1 | Version                |             |
+    |               1 | Configuration          | Bitmask     |
+    |               2 | Number of sections (N) | 16-bits unsigned integer |
+    | N *  3 * 3 * 4  | Control points         | Position of the control points using floating point values |
+    |----------------:|------------------------|-------------|
+    |               4 | pt0.x                  |             |
+    |               4 | pt0.y                  |             |
+    |               4 | pt0.z                  |             |
+    |               4 | pt1.x                  |             |
+    |               4 | pt1.y                  |             |
+    |               4 | pt1.z                  |             |
+    |               4 | pt2.x                  |             |
+    |               4 | pt2.y                  |             |
+    |               4 | pt2.z                  |             |
+    |----------------:|------------------------|-------------|
+    | N * (3 * 4 + 4) | Section Data           | Normal and width of the track at the beginning of this section |
+    |----------------:|------------------------|-------------|
+    |               4 | normal.x               |             |
+    |               4 | normal.y               |             |
+    |               4 | normal.z               |             |
+    |               4 | width                  |             |
+
+
+"""
 
 
 # MARK: functions
@@ -38,8 +69,9 @@ def serialize_point(vec: Vector) -> bytes:
 
 # serialize the data as a sequence of bytes
 def serialize_normal(vec: Vector) -> bytes:
-    norm: Vector = vec * 127.0
-    return struct.pack('>bbb', int(norm.x), int(norm.y), int(norm.z))
+    #norm: Vector = vec * 127.0
+    #return struct.pack('>bbb', int(norm.x), int(norm.y), int(norm.z))
+    return struct.pack(">fff", *vec)
 
 # convert to json
 def vector_to_json(vec: Vector) -> dict[str, float]:
