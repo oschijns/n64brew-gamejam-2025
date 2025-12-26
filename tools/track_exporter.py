@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import os.path
-import sys
 import bpy
 import json
 import struct
@@ -10,7 +8,8 @@ import itertools
 from pathlib   import Path
 from typing    import Self, Any
 from mathutils import Vector, Quaternion
-from bpy.types import Point, Spline, BezierSplinePoint
+from bpy.types import Operator, Panel, Spline, BezierSplinePoint
+from bpy.props import StringProperty
 
 
 # object to look for in the blender project
@@ -20,6 +19,8 @@ OUTPUT_PATH: Path = Path("/home/oschijns/Projects/n64")
 AUDIT_FILE : str  = "track.json"
 BINARY_FILE: str  = "track.bin"
 
+
+# MARK: functions
 
 # iterate list by overlapping pairs
 def pairwise(iterable):
@@ -48,6 +49,9 @@ def vector_to_json(vec: Vector) -> dict[str, float]:
         'z': vec.z,
     }
 
+
+
+# MARK: Section Data
 
 # Define curve data such as normal and width
 class SectionData:
@@ -82,6 +86,9 @@ class SectionData:
             'width' : self.width,
         }
 
+
+
+# MARK: Track
 
 # Track read from the Blender curve and to be serialized
 class Track:
@@ -150,14 +157,21 @@ class Track:
 
 
 
+# MARK: file handling
+
 # Read a bezier curve in the Blender scene and write it to a file
-def main():
-    blend_obj = bpy.context.scene.objects[TRACK_NAME]
+def process(
+        track_name : str, 
+        output_path: Path,
+        binary_file: str,
+        audit_file : str,
+    ):
+    blend_obj = bpy.context.scene.objects[track_name]
     track: Track = Track.from_blender(blend_obj.data.splines[0])
 
     # where to write the files
-    path_bin : Path = OUTPUT_PATH / BINARY_FILE
-    path_json: Path = OUTPUT_PATH / AUDIT_FILE
+    path_bin : Path = output_path / binary_file
+    path_json: Path = output_path / audit_file
 
     # write a JSON representation of the file to audit it
     with open(path_json, 'w+') as file:
@@ -168,5 +182,66 @@ def main():
 
 
 
+# MARK: Blender Operator
+
+class N64BREW_OT_exporter(Operator):
+    bl_idname: str = "n64brew.exporter"
+    bl_label : str = "N64 Track Export"
+
+    # Name of the spline object to serialize
+    spline_name: StringProperty(name = "Spline Name", default = "TRACK")
+
+    # Select a directory to write the files
+    directory: StringProperty(
+        name    = "Directory",
+        subtype = 'DIR_PATH'
+    )
+
+    # Name of the two files to generate
+    outname_bin : StringProperty(name = "Output name binary", default = "track.bin")
+    outname_json: StringProperty(name = "Output name audit" , default = "track.json")
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(self, "spline_name" )
+        layout.prop(self, "directory"   )
+        layout.prop(self, "outname_bin" )
+        layout.prop(self, "outname_json")
+
+    def execute(self, context):
+        process(self.spline_name, Path(self.directory), self.outname_bin, self.outname_json)
+        return {'FINISHED'}
+
+
+# MARK: Blender Panel
+
+class N64BREW_PT_exporter(Panel):
+    bl_idname     : str = "N64BREW_PT_exporter"
+    bl_label      : str = "N64 brew Track Exporter"
+    bl_space_type : str = 'VIEW_3D'
+    bl_region_type: str = 'UI'
+    bl_category   : str = 'N64 brew'
+
+    def draw(self, context):
+        row = self.layout.row()
+        row.operator(N64BREW_OT_exporter.bl_idname, text = "Export track")
+
+
+# MARK: Blender register
+
+def blender_register():
+    bpy.utils.register_class(N64BREW_OT_exporter)
+    bpy.utils.register_class(N64BREW_PT_exporter)
+
+def blender_unregister():
+    bpy.utils.unregister_class(N64BREW_PT_exporter)
+    bpy.utils.unregister_class(N64BREW_OT_exporter)
+
+
+# MARK: main
+
 if __name__ == "__main__":
-    main()
+    blender_register()
