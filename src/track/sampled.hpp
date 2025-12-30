@@ -60,6 +60,7 @@ namespace jam::track
     };
 
 
+    /// @brief Sampled section of the track
     class SampledSection
     {
         friend class Model;
@@ -100,6 +101,7 @@ namespace jam::track
     };
 
 
+    /// @brief Storage for sampled sections
     class SamplesStorage
     {
     protected:
@@ -108,8 +110,20 @@ namespace jam::track
         List<SampledSection *> containers;
 
     public:
+        /// @brief Constructor
+        SamplesStorage() {}
 
-        // TODO: write section swap method
+        /// @brief Destructor
+        ~SamplesStorage() {}
 
+        /// @brief Append a new sampled section at the tail of this container
+        /// @param section The section to append at the tail
+        /// @return The section that was at the head
+        SampledSection * append(SampledSection * section);
+
+        /// @brief Prepend a new sampled section at the head of this container
+        /// @param section The section to prepend at the head
+        /// @return The section that was at the tail
+        SampledSection * prepend(SampledSection * section);
     };
 }

@@ -8,6 +8,15 @@
 #include <GL/glu.h>
 #include <GL/gl_integration.h>
 
+// include single header files to test compilation
+#if true
+#include "math/base.hpp"
+#include "math/vec2.hpp"
+#include "math/vec3.hpp"
+#include "math/quat.hpp"
+#include "math/isometry.hpp"
+#include "math/jump_trajectory.hpp"
+#endif
  
 int main(void)
 {

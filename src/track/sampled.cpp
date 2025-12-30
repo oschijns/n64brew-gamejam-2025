@@ -135,3 +135,38 @@ int SampledSection::closest_point(const Vec3 & position, int index, SampledPoint
     }
     return index;
 }
+
+
+SampledSection * SamplesStorage::append(SampledSection * section)
+{
+    // size of the container
+    const uint count = containers.len() - 1;
+
+    // pick the head of the list
+    SampledSection *const head = containers[0];
+
+    // shift the array toward the beginning
+    memmove(containers.raw_mut(), containers.raw() + 1, count);
+
+    // add the section at the last position
+    containers[count] = section;
+
+    return head;
+}
+
+SampledSection * SamplesStorage::prepend(SampledSection * section)
+{
+    // size of the container
+    const uint count = containers.len() - 1;
+
+    // pick the tail of the list
+    SampledSection *const tail = containers[count];
+
+    // shift the array toward the end
+    memmove(containers.raw_mut() + 1, containers.raw(), count);
+
+    // add the section at the first position
+    containers[0] = section;
+
+    return tail;
+}
