@@ -4,6 +4,8 @@
 
 namespace jam
 {
+    // MARK: Array
+
     /// @brief Fixed size array structure
     /// @tparam T The type stored in the array
     /// @tparam N 
@@ -22,6 +24,9 @@ namespace jam
         /// @brief Const access operator
         inline T operator[](unsigned index) const { return data[index]; }
     };
+
+
+    // MARK: List
 
     /// @brief List with runtime length
     /// @tparam T The type stored in the list
@@ -89,6 +94,9 @@ namespace jam
         /// @brief Get a raw mutable pointer to the list data
         inline T * raw_mut() { return data; }
     };
+
+
+    // MARK: Vector
 
     /// @brief Vector that can grow over time
     /// @tparam T The type stored in the vector

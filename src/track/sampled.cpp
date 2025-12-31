@@ -13,6 +13,8 @@ using namespace jam;
 using namespace jam::track;
 
 
+// MARK: Sampled Point
+
 SampledPoint lerp(const SampledPoint & pt0, const SampledPoint & pt1, real t)
 {
     return SampledPoint(
@@ -60,6 +62,8 @@ void SampledPoint::load_vertexes_pair(real scale, uint index, T3DVertPacked & ve
     st_b.to_rspq(UV_SCALE, vert_pair.stB);
 }
 
+
+// MARK: Sampled Section
 
 /// @brief Array of indexes to initialize once
 static int16_t RSPQ_INDEXES [BUFFER_SIZE * 2];
@@ -136,6 +140,8 @@ int SampledSection::closest_point(const Vec3 & position, int index, SampledPoint
     return index;
 }
 
+
+// MARK: Sampled Storage
 
 SampledSection * SamplesStorage::append(SampledSection * section)
 {

@@ -152,7 +152,7 @@ namespace jam::track
         Model(const Model & track) = delete;
 
         /// @brief Copy operator
-        Model & operator=(const Model & track) = delete;
+        void operator=(const Model & track) = delete;
 
         /// @brief Move constructor
         inline Model(Model && track):

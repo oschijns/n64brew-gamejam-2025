@@ -10,7 +10,9 @@ namespace jam::car
     /// @brief Body of the car
     class Body
     {
-    public:
+    protected:
+        // MARK: Members
+
         /// @brief Isometry of the car in 3D space
         Isometry isometry;
 
@@ -23,6 +25,7 @@ namespace jam::car
         /// @brief Segment of the sampled section this body is on
         uint16_t segment = 0;
 
+    public:
         /// @brief Default constructor
         inline Body() = default;
 

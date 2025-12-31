@@ -2,6 +2,7 @@
 
 
 #include <cstdint>
+#include <t3d/t3d.h>
 #include "math/base.hpp"
 
 
@@ -291,6 +292,22 @@ namespace jam
 
 
         // MARK: Conversion
+
+        /// @brief Convert the 3D vector into one compatible with Tiny3D
+        inline T3DVec3 & to_t3d()
+        {
+            static_assert(sizeof(Vec3) == sizeof(T3DVec3),
+                "Vector types cannot be trivially casted");
+
+            // Cast our vector 3D type into Tiny3D vector type
+            return *reinterpret_cast<T3DVec3*>(this);
+        }
+
+        /// @brief Convert the 3D vector into one compatible with Tiny3D
+        inline explicit operator T3DVec3()
+        {
+            return to_t3d();
+        }
 
         /// @brief Convert the Vector into a RSPQ vector
         /// @param[in] scale Factor to multiply the vector with

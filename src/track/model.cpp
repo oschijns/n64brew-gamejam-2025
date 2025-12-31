@@ -11,6 +11,8 @@ using namespace jam;
 using namespace jam::track;
 
 
+// MARK: Model
+
 void Model::sample_section(uint index, List<Point> & samples) const
 {
     // Figure out where to read control points from

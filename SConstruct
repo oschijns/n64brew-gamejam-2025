@@ -10,6 +10,10 @@ from SCons.Script  import GetOption
 # N64 toolchain configuration
 N64_INST = os.environ.get('N64_INST', '/opt/libdragon')
 
+# Assets
+assets_tracks = 'assets/tracks/*.track'
+assets_models = 'assets/models/*.glb'
+
 # Source files
 source_files = [
     # compile C files at the root
@@ -103,7 +107,7 @@ env = SCons.Environment.Environment(
 
         # libdragon
         f'-L{N64_INST}/mips64-elf/lib',
-        '-LLlibraries/libdragon',
+        '-Llibraries/libdragon',
 
         # Tiny3D
         '-Llibraries/tiny3d/build',
@@ -169,7 +173,6 @@ build_sources = []
 for src in source_files:
     build_sources.extend(env.Glob(src))
 
-
 # Create build directory objects
 #build_sources = [f'{build_dir}/{os.path.basename(src)}' for src in source_files]
 
@@ -181,8 +184,41 @@ elf = env.Program(target=elf_target, source=build_sources)
 n64_tools = {
     'N64SYM'         : f'{N64_INST}/bin/n64sym',
     'N64TOOL'        : f'{N64_INST}/bin/n64tool',
-    'N64ELFCOMPRESS' : f'{N64_INST}/bin/n64elfcompress'
+    'N64ELFCOMPRESS' : f'{N64_INST}/bin/n64elfcompress',
+    'N64MKASSET'     : f'{N64_INST}/bin/mkasset',
+    'N64MKDFS'       : f'{N64_INST}/bin/mkdfs',
+    'T3DGLTF'        : f'{N64_INST}/bin/gltf_to_t3d'
 }
+
+
+# Define builders for assets
+def build_dfs(target, source, env):
+    # Make all the assets
+    os.makedirs("filesystem", exist_ok=True)
+
+    for t3d_model in env.Glob(assets_models):
+        outs = os.path.basename(str(t3d_model)).replace(".glb", ".t3dm")
+        result = env.Execute(
+            f"N64_INST={N64_INST} {n64_tools['T3DGLTF']} -v {t3d_model.get_path()} {outs}"
+        )
+        if result != 0:
+            raise RuntimeError("Failed to make the t3d models")
+
+        result = env.Execute(
+            f"N64_INST={N64_INST} {n64_tools['N64MKASSET']} -c 3 -o filesystem {outs}"
+        )
+
+    for asset in env.Glob(assets_tracks):
+        result = env.Execute(
+            f"N64_INST={N64_INST} {n64_tools['N64MKASSET']} -c 3 -o filesystem {asset.get_path()}"
+        )
+        if result != 0:
+            raise RuntimeError(f"Couldn't mkasset {result}")
+
+    env.Execute(
+        f"N64_INST={N64_INST} {n64_tools['N64MKDFS']} {target[0].get_path()} filesystem"
+    )
+
 
 # Custom builder for N64 ROM
 def build_n64_rom(target, source, env):
@@ -225,7 +261,8 @@ def build_n64_rom(target, source, env):
     return 0
 
 # Register the custom builder
-rom_builder = Builder(action=build_n64_rom, suffix='.z64', src_suffix='.elf')
+dfs_builder = Builder(action=build_dfs    , suffix='.dfs', src_suffix=['.elf', '.bin'])
+rom_builder = Builder(action=build_n64_rom, suffix='.z64', src_suffix=['.elf', '.dfs'])
 env.Append(BUILDERS={'N64ROM': rom_builder})
 
 # Build the ROM
