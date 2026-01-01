@@ -35,6 +35,9 @@ namespace jam::track
             width(width_)
         {}
 
+        /// @brief Default destructor
+        inline ~Point() = default;
+
     public:
         /// @brief Linera interpolation between two points
         /// @param pt0 First point

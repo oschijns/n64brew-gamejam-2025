@@ -14,14 +14,17 @@ namespace jam::render
     /// @brief Define a light in the scene
     class Light
     {
-    protected:
+    public:
         /// @brief Direction of the light
-        Vec3 direction;
+        Vec3 direction = Vec3(0.f, 1.f, 0.f);
 
         /// @brief Color of the light
-        color_t color;
+        color_t color = RGBA32(0xff, 0xff, 0xff, 0xff);
 
     public:
+        /// @brief Default constructor
+        constexpr inline Light() = default;
+
         /// @brief Construct a light for the scene
         /// @param dir Direction of the light
         /// @param color_ Color of the light
@@ -29,6 +32,9 @@ namespace jam::render
             direction(dir),
             color(color_)
         {}
+
+        /// @brief Default destructor
+        inline ~Light() = default;
 
         /// @brief Copy constructor
         constexpr inline Light(const Light & other):
@@ -65,14 +71,17 @@ namespace jam::render
 
     public:
         /// @brief Clear color for the background
-        color_t clear;
+        color_t clear   = RGBA32(0xff, 0xff, 0xff, 0xff);
 
         /// @brief Ambient color
-        color_t ambient;
+        color_t ambient = RGBA32(0xff, 0xff, 0xff, 0xff);
 
     public:
         /// @brief Create a container for storing lights
         inline Environment() = default;
+
+        /// @brief Default destructor
+        inline ~Environment() = default;
 
         /// @brief Copy constructor
         Environment(const Environment & other) = delete;

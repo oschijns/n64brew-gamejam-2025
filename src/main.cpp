@@ -11,6 +11,8 @@
 //#include <GL/gl_integration.h>
 
 #include "track/model.hpp"
+#include "render/camera.hpp"
+#include "render/light.hpp"
 
 #include <vector>
 
@@ -32,8 +34,11 @@ namespace jam
     /// @brief 3D mesh to render
     static T3DModel * track_model = nullptr;
 
-    /// @brief Viewport
-    static T3DViewport viewport;
+    /// @brief Camera
+    static render::Camera camera;
+
+    /// @brief Environment
+    static render::Environment environment;
 
     /// @brief Setup the Game
     void initialize()
@@ -69,7 +74,7 @@ namespace jam
     {
         // Curve model
         track::Model curve;
-        track::LoadError error = track::Model::load_from_file("rom:/sample.bin", curve);
+        track::LoadError error = track::Model::load_from_file("rom://sample.bin", curve);
         assertf(error == track::LoadError::OK, "Failed to load curve track");
 
         // Tiny3D models
@@ -78,30 +83,33 @@ namespace jam
     }
 
     /// @brief Setup viewport, lighting and camera
-    void setup_scene()
+    void setup_rendering()
     {
-        // viewport, lighting, camera
-        T3DViewport viewport = t3d_viewport_create();
-
-        uint8_t color_ambient[4] = {254, 254, 254, 0xFF};
-        T3DVec3 light_dir_vec = {{0.f, 1.f, 0.f}};
-        t3d_vec3_norm(&light_dir_vec);
-        color_t light_dir_color = RGBA32(0xFF, 0xFF, 0xFF, 0xFF);
-
-        // Pulled these from blender. If you want the relevant python
+        // Pulled these from blender.
+        // If you want the relevant python
         // `mathutils.Matrix.decompose(C.scene.camera.matrix_world)[0].xzy * 64`
-        // T3DVec3 cameraPos = {312.9292297363281, 186.78846740722656,
-        //                      381.92987060546875};
-        T3DVec3 cameraPos = {2.92, 346.78, 106.92};
-        T3DVec3 origin = {0, 0, 0};
-        T3DVec3 yUp = {0.f, 1.f, 0.f};
-        unsigned short idx = 0, t = 0;
-        T3DMat4FP *loc[1]{(T3DMat4FP *)malloc_uncached(sizeof(T3DMat4FP))};
+        // T3DVec3 cameraPos = {312.9292297363281, 186.78846740722656, 381.92987060546875};
+        camera.origin = Vec3(2.92, 346.78, 106.92);
+
+        // Add a light to the environment
+        environment.add_light(render::Light());
     }
 
     /// @brief Called repeatedly in a loop
     void update()
     {
+        // read inputs
+        joypad_poll();
+        joypad_buttons_t btns = joypad_get_buttons_pressed(JOYPAD_PORT_1);
+
+        camera.update_projection();
+        camera.update_look_at();
+
+        rdpq_attach(display_get(), display_get_zbuf());
+        t3d_frame_start();
+        camera.attach_viewport();
+        environment.render();
+
         rdpq_sync_pipe();
         rdpq_text_printf(NULL, 1, 30, 60, "1 - Teal\n2 - Green\n3 - Blue\n4 - Purple");
         rdpq_detach_show();
@@ -123,6 +131,8 @@ namespace jam
 int main(void)
 {
     jam::initialize();
+    jam::load_track();
+    jam::setup_rendering();
 
     // infinite loop
     while (true)

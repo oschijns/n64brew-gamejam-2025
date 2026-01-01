@@ -44,6 +44,9 @@ namespace jam::track
             width   (width_   )
         {}
 
+        /// @brief Default destructor
+        inline ~SampledPoint() = default;
+
     public:
         /// @brief Linera interpolation between two points
         /// @param pt0 First point
@@ -76,6 +79,9 @@ namespace jam::track
         rspq_block_t * cmd_block = nullptr;
 
     public:
+
+        /// @brief Default constructor
+        inline SampledSection() = default;
 
         /// @brief Destructor for the sub track
         ~SampledSection();

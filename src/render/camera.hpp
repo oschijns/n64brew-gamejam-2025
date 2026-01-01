@@ -55,6 +55,9 @@ namespace jam::render
             plane_far(plane_far_)
         {}
 
+        /// @brief Default destructor
+        inline ~Camera() = default;
+
         /// @brief Copy constructor
         Camera(const Camera & other) = delete;
 
@@ -63,6 +66,12 @@ namespace jam::render
 
 
     public:
+
+        /// @brief Attach the viewport
+        inline void attach_viewport()
+        {
+            t3d_viewport_attach(&viewport);
+        }
 
         /// @brief Update the projection matrix of the viewport
         inline void update_projection()

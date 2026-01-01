@@ -25,6 +25,9 @@ namespace jam::car
         /// @brief Segment of the sampled section this body is on
         uint16_t segment = 0;
 
+        /// @brief Color of the car
+        color_t color = RGBA32(0xff, 0xff, 0xff, 0xff);
+
     public:
         /// @brief Default constructor
         inline Body() = default;
