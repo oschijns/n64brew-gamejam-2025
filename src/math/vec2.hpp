@@ -157,7 +157,7 @@ namespace jam
         }
 
         /// @brief Normalize the vector
-        constexpr inline Vec2 normal()
+        constexpr inline Vec2 normal() const
         {
             Vec2 n = *this;
             n.normalize();

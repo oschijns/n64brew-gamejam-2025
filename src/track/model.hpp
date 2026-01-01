@@ -25,10 +25,10 @@
  * 
  * Then we have 4 sections: A, B, C, D
  * Each section has 4 control points:
- * - Segment A: A0, A1, A2, B0
- * - Segment B: B0, B1, B2, C0
- * - Segment C: C0, C1, C2, D0
- * - Segment D: D0, D1, D2, A0
+ * - Section A: A0, A1, A2, B0
+ * - Section B: B0, B1, B2, C0
+ * - Section C: C0, C1, C2, D0
+ * - Section D: D0, D1, D2, A0
  * 
  * The last control point of section D (A0) is a duplicate of the first control point
  * of section A to allow proper looping.

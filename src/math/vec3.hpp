@@ -170,7 +170,7 @@ namespace jam
         }
 
         /// @brief Normalize the vector
-        constexpr inline Vec3 normal()
+        constexpr inline Vec3 normal() const
         {
             // Copy then normalize
             Vec3 n = *this;
@@ -180,14 +180,14 @@ namespace jam
 
         /// @brief Return the projection of this vector onto another vector
         /// @note Resulting vector will be colinear to 'other'
-        constexpr Vec3 projected_onto(const Vec3 & other)
+        constexpr Vec3 projected_onto(const Vec3 & other) const
         {
             return other * (dot(other) / other.mag_sqr());
         }
 
         /// @brief Return the rejection of this vector from another vector
         /// @note Resulting vector will be orthogonal to 'other'
-        constexpr inline Vec3 rejected_from(const Vec3 & other)
+        constexpr inline Vec3 rejected_from(const Vec3 & other) const
         {
             return *this - projected_onto(other);
         }

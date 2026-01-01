@@ -1,6 +1,7 @@
 #include <libdragon.h>
 #include <t3d/t3d.h>
 #include "math/vec2.hpp"
+#include "math/plane.hpp"
 #include "math/interpolate.hpp"
 #include "track/sampled.hpp"
 
@@ -60,6 +61,55 @@ void SampledPoint::load_vertexes_pair(real scale, uint index, T3DVertPacked & ve
         st_b (1.f, height);
     st_a.to_rspq(UV_SCALE, vert_pair.stA);
     st_b.to_rspq(UV_SCALE, vert_pair.stB);
+}
+
+
+/// @brief Sub process for the `SampledPoint::collide` method, 
+///        handle one of the three plane delimiting the road.
+/// @param plane    Plane limit to check for contact
+/// @param radius   Radius of the object
+/// @param position Position of the object
+/// @param velocity Velocity of the object
+/// @return Return true if there was a contact with the plane
+bool inner_collide(const Plane & plane, real radius, Vec3 & position, Vec3 & velocity)
+{
+    const real distance = plane.distance(position);
+
+    // If the sphere around the object is intersecting or below the plane
+    // Then there is a contact.
+    if (distance < radius)
+    {
+        // Object is under the road, push it out of it
+        position += plane.normal * abs(radius - distance);
+        velocity  = plane.normal.rejected_from(velocity);
+        return true;
+    }
+    else return false;
+}
+
+
+bool SampledPoint::collide(real radius, Vec3 & position_, Vec3 & velocity) const
+{
+    // Build three planes from the point: 
+    // one for the floor and two for the walls
+    const Vec3 side = binormal * (width * 0.5f);
+    const Plane
+        plane_floor ( normal  , position),
+        plane_left  ( binormal, position - side),
+        plane_right (-binormal, position + side);
+
+    // Check contact with the floor for sure
+    const bool contact_floor = inner_collide(plane_floor, radius, position_, velocity);
+
+    // Check contact with either walls
+    // Here it is fine if C++ do some weird optimization, the two walls should 
+    // not be so close that an object is in contact with both at the same time.
+    const bool contact_wall  = 
+            inner_collide(plane_left , radius, position_, velocity) ||
+            inner_collide(plane_right, radius, position_, velocity);
+
+    // Return if there was any contact
+    return contact_floor || contact_wall;
 }
 
 

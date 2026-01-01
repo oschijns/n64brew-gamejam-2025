@@ -22,6 +22,7 @@ namespace jam::track
         /// @brief Normal at the control point
         Vec3 normal = Vec3(0.f, 1.f, 0.f);
 
+        // TODO: what should be the default direction of the binormal?
         /// @brief Binormal at the control point
         Vec3 binormal = Vec3(1.f, 0.f, 0.f);
 
@@ -60,6 +61,13 @@ namespace jam::track
         /// @param[in]  index Index of the sampled point in the sampled section
         /// @param[out] vert_pair a pair of vertexes
         void load_vertexes_pair(real scale, uint index, T3DVertPacked & vert_pair) const;
+
+        /// @brief Test for collision between this sampled point and the other object
+        /// @param[in]    radius    Radius of the other object
+        /// @param[inout] position_ Position of the other object
+        /// @param[inout] velocity  Velocity of the other object, may be modified
+        /// @return True if there was a collision
+        bool collide(real radius, Vec3 & position_, Vec3 & velocity) const;
     };
 
 
