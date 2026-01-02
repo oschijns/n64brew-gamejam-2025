@@ -19,7 +19,7 @@ namespace jam::render
         Vec3 direction = Vec3(0.f, 1.f, 0.f);
 
         /// @brief Color of the light
-        color_t color = RGBA32(0xff, 0xff, 0xff, 0xff);
+        color_t color {0xff, 0xff, 0xff, 0xff};
 
     public:
         /// @brief Default constructor
@@ -71,10 +71,10 @@ namespace jam::render
 
     public:
         /// @brief Clear color for the background
-        color_t clear   = RGBA32(0xff, 0xff, 0xff, 0xff);
+        color_t clear {0xff, 0xff, 0xff, 0xff};
 
         /// @brief Ambient color
-        color_t ambient = RGBA32(0xff, 0xff, 0xff, 0xff);
+        color_t ambient {0xff, 0xff, 0xff, 0xff};
 
     public:
         /// @brief Create a container for storing lights

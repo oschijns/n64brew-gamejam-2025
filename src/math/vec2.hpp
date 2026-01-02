@@ -188,20 +188,20 @@ namespace jam
         // MARK: Comparison
 
         /// Check if the two vectors are approximately equal
-        static constexpr bool approx_equal(const Vec2 & a, const Vec2 & b, real epsilon = EPSILON)
+        static bool approx_equal(const Vec2 & a, const Vec2 & b, real epsilon = EPSILON)
         {
             return jam::approx_equal(a.x, b.x, epsilon) and
                    jam::approx_equal(a.y, b.y, epsilon);
         }
 
         /// @brief Equality operator
-        inline constexpr bool operator==(const Vec2 & other) const
+        inline bool operator==(const Vec2 & other) const
         {
             return approx_equal(*this, other);
         }
 
         /// @brief Inequality operator
-        inline constexpr bool operator!=(const Vec2 & other) const
+        inline bool operator!=(const Vec2 & other) const
         {
             return not approx_equal(*this, other);
         }

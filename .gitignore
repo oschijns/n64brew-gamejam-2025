@@ -15,3 +15,5 @@ config.log
 src/**/*.o
 build/
 *.z64
+
+libraries

@@ -75,7 +75,7 @@ namespace jam
         // Curve model
         track::Model curve;
         track::LoadError error = track::Model::load_from_file("rom://sample.bin", curve);
-        assertf(error == track::LoadError::OK, "Failed to load curve track");
+        assertf(error == track::LoadError::OK, "Failed to load curve track: %d", (int)error);
 
         // Tiny3D models
         T3DModel *const track = t3d_model_load("rom://track.t3dm");
