@@ -26,7 +26,7 @@ namespace jam::car
         uint16_t segment = 0;
 
         /// @brief Color of the car
-        color_t color = RGBA32(0xff, 0xff, 0xff, 0xff);
+        color_t color {0xff, 0xff, 0xff, 0xff};
 
     public:
         /// @brief Default constructor

@@ -231,7 +231,7 @@ namespace jam
         // MARK: Comparison
 
         /// Check if the two quaternions are approximately equal
-        static constexpr bool approx_equal(const Quat & a, const Quat & b, real epsilon = EPSILON)
+        static bool approx_equal(const Quat & a, const Quat & b, real epsilon = EPSILON)
         {
             return jam::approx_equal(a.x, b.x, epsilon) and
                    jam::approx_equal(a.y, b.y, epsilon) and
@@ -240,13 +240,13 @@ namespace jam
         }
 
         /// @brief Equality operator
-        constexpr inline bool operator==(const Quat & other) const
+        inline bool operator==(const Quat & other) const
         {
             return approx_equal(*this, other);
         }
 
         /// @brief Inequality operator
-        constexpr inline bool operator!=(const Quat & other) const
+        inline bool operator!=(const Quat & other) const
         {
             return not approx_equal(*this, other);
         }

@@ -89,7 +89,7 @@ namespace jam::track
 
 
     /// @brief Enumeration of possible errors that can be encountered when loading a track file
-    enum class LoadError
+    enum class LoadError: uint
     {
         /// @brief No error encountered when loading the file
         OK = 0,

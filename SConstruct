@@ -11,7 +11,7 @@ from SCons.Script  import GetOption
 N64_INST = os.environ.get('N64_INST', '/opt/libdragon')
 
 # Assets
-assets_tracks = 'assets/tracks/*.track'
+assets_tracks = 'assets/tracks/*.bin'
 assets_models = 'assets/models/*.glb'
 
 # Source files
@@ -254,7 +254,8 @@ def build_n64_rom(target, source, env):
         '--align', '256',
         stripped_file,
         sym_file,
-        'libraries/libdragon/libdragon.version'
+        'libraries/libdragon/libdragon.version',
+        'build/Build.dfs'
     ]
     env.Execute(' '.join(cmd))
 
@@ -263,7 +264,7 @@ def build_n64_rom(target, source, env):
 # Register the custom builder
 dfs_builder = Builder(action=build_dfs    , suffix='.dfs', src_suffix=['.elf', '.bin'])
 rom_builder = Builder(action=build_n64_rom, suffix='.z64', src_suffix=['.elf', '.dfs'])
-env.Append(BUILDERS={'N64ROM': rom_builder})
+env.Append(BUILDERS={'N64ROM': rom_builder, 'N64DFS': dfs_builder})
 
 # Build the ROM
 rom_target = 'n64brew_gamejam.z64'
@@ -271,6 +272,7 @@ rom = env.N64ROM(target=rom_target, source=elf)
 
 # Set up dependencies
 env.Depends(elf, lib_libdragon + lib_tiny3d + lib_flecs)
+env.Depends(rom, env.N64DFS(target="build/Build.dfs", source=elf))
 env.Depends(rom, elf)
 
 # Default target

@@ -39,7 +39,7 @@ namespace jam::render
         /// @brief Set the camera position 
         /// @param origin_ Position of the camera
         /// @param target_ Target   of the camera
-        constexpr inline Camera(
+        inline Camera(
             const Vec3 & origin_,
             const Vec3 & target_,
             const Vec3 & up_,

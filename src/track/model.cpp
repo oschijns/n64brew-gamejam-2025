@@ -109,7 +109,10 @@ LoadError Model::load_from_file(const char * filepath, Model & track)
     fread(&header, SIZE_HEADER, 1, file);
 
     // check the data in the header
-    if (header.version == FILE_VERSION) return LoadError::WRONG_VERSION;
+    if (header.version != FILE_VERSION) {
+      debugf("Read version %d\n", header.version);
+      return LoadError::WRONG_VERSION;
+    }
     if (header.count   == 0           ) return LoadError::NO_DATA;
 
     // number of elements to read
@@ -118,11 +121,11 @@ LoadError Model::load_from_file(const char * filepath, Model & track)
         count_sections = header.count;
 
     // Check that we will be able to read the data
-    if (size < SIZE_HEADER 
-        + count_points   * SIZE_POINT 
-        + count_sections * SIZE_SECTION
-    )
-        return LoadError::WRONG_SECTION_COUNT;
+    auto expected_size = SIZE_HEADER + (count_points * SIZE_POINT) + (count_sections * SIZE_SECTION);
+    if (size < expected_size) {
+      debugf("Incorrect size: actual %d, expected: %d (%d points)\n", size, expected_size, header.count);
+      return LoadError::WRONG_SECTION_COUNT;
+    }
 
     // Prepare the lists
     track.set_section_count(header.count);
