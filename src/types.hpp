@@ -1,0 +1,31 @@
+#pragma once
+#include <deque>
+#include "math/vec3.hpp"
+const size_t MAX_HISTORY = 15;
+
+enum class Phase: uint8_t {
+  GARAGE = 0,
+  RACE,
+  NUM_VALUES
+};
+
+typedef struct gamestate_s {
+  jam::Vec3 lastPoint;
+  int lastXInput;
+  int lastYInput;
+  Phase phase;
+} gamestate_page_t;
+
+using GameStateBook = std::deque<gamestate_page_t>;
+
+constexpr size_t numBlocks = 8;
+const jam::Vec3 translationsWorldSpace[numBlocks] {
+{1.2478300333023071,3.5999295711517334,-1.68996000289917},
+{1.2609858512878418,3.5668258666992188,2.0495476722717285},
+{1.1973798274993896,1.275890588760376,-1.7083580493927002},
+{1.2840863466262817,1.148205280303955,2.068373918533325},
+{1.159170389175415,-1.28757643699646,-1.7275338172912598},
+{1.1538381576538086,-1.3277736902236938,2.0826239585876465},
+{1.1285934448242188,-3.736936092376709,-1.7579345703125},
+{1.1488735675811768,-3.762946128845215,2.0658416748046875}
+};

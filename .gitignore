@@ -13,5 +13,6 @@ config.log
 
 # Build output
 src/**/*.o
+filesystem/
 build/
 *.z64
