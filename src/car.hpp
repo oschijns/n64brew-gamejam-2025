@@ -30,5 +30,6 @@ public:
   void SetColors(int numColors, color_t* colors);
   void Update(GameStateBook& gameStateHistory, joypad_buttons_t buttons);
   void Render(T3DModelState& state);
+  SphereCollider Collider() { return SphereCollider(currentLocal, 0.23f); }
 };
 

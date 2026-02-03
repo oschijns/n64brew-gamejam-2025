@@ -4,6 +4,7 @@
 
 #include <cmath>   // floor, tan
 #include <cstring> // memcpy
+#include <iterator>
 #include <libdragon.h>
 #include <deque>
 #include <t3d/t3d.h>
@@ -163,8 +164,6 @@ int main(void) {
   gamestatebook_update(gameStateHistory, currentPhase);
   Car* car = new Car(bezierTrack);
 
-  // Setup some colliders for the bezier track points for testing
-  SphereCollider* testCollider = new SphereCollider(*bezierTrack.control_points_begin(), 100.f);
 
   while (true) {
     joypad_poll();
@@ -208,7 +207,15 @@ int main(void) {
           t3d_model_draw_object(it.object, NULL);
         }
       }
-      testCollider->DebugDraw();
+      // Setup some colliders for the bezier track points for testing
+      for (auto nextStop = bezierTrack.control_points_begin(); nextStop != bezierTrack.control_points_end(); ++nextStop)
+      {
+        SphereCollider* testCollider = new SphereCollider(*nextStop, 0.20f);
+        if (testCollider->Collide(car->Collider()))
+        {
+          currentPhase = Phase::GARAGE;
+        }
+      }
       T3DModelState state = t3d_model_state_create();
       car->Render(state);
 
